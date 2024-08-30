@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css">
+</head>
+
+
+<body>
+
+        <!-- ############################################################################ -->
+        <div class="tab">
+            <button class="tablinks" onclick="openCity(event, '1_reaction')">Upload a Reaction SMILE</button>
+            <button class="tablinks" onclick="openCity(event, 'csv_reaction')">Upload a File</button>
+
+        </div>
+        <div id="1_reaction" class="tabcontent">
+        <h3>Upload a Reaction SMILE</h3>
+            <form action="/predict" method="post" id="oneReactionForm">
+                <label for="reaction_smile">Enter a Reaction SMILE:</label>
+                <div  id="search_bar">
+                    <input type="text" id="reaction_smile" name="reaction_smile">
+                    {% if one_prediction or is_csv_pred or show_table%}
+                        <button disabled type="submit"><i class="fa fa-search"></i><span style="margin-left:5px;">Predict</span></button>
+                    {% else %}
+                        <button type="submit" id = "predict_button_javascript"><i class="fa fa-search"></i><span style="margin-left:5px;">Predict</span></button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+
+
+        
+        <div id="csv_reaction" class="tabcontent">
+            <div  class="text-with-icon">
+                <h3>Upload a File </h3>
+                <span class="info-icon-container">
+                    <i class="fas fa-info-circle info-icon"></i>
+                    <div class="tooltip">The file should be in a .csv format with a column titled "rxn"</div>
+                </span>
+            </div>
+                <form action="/predict_csv" method="post" enctype="multipart/form-data" id = 'upload-form'>
+                    <label for="file">Upload a CSV file:</label>
+                    <input type="file" id="file-input" name="file">
+                    {% if one_prediction or is_csv_pred or show_table %}
+                        <button disabled type="submit" id="predict-button"><i class="fa fa-search"></i><span style="margin-left:5px;"></span>Predict from CSV</button>
+                    {% else %}
+                        <button type="submit" id="csv_predict_button_javascript"><i class="fa fa-search"></i><span style="margin-left:5px;"></span>Predict from CSV</button>
+                    {% endif %}
+                        
+                </form>
+        </div>
+        <!-- ############################################################################ -->
+
+
+        <!--<a href="#default">Upload a Reaction SMILE</a>
+        <a href="#item1">Upload a File</a>
+        
+        
+        <div class="items">
+            <div id ="default" class="container">
+                <form action="/predict" method="post">
+                    <label for="number">Enter a number:</label>
+                    <input type="text" id="number" name="number">
+                    {% if prediction or is_csv_pred or show_table%}
+                        <button disabled type="submit">Predict</button>
+                    {% else %}
+                        <button type="submit">Predict</button>
+                    {% endif %}
+                </form>
+            </div>
+        <div id="item1" class="container">
+            <form action="/predict_csv" method="post" enctype="multipart/form-data" id = 'upload-form'>
+                <label for="file">Upload a CSV file:</label>
+                <input type="file" id="file-input" name="file">
+                {% if prediction or is_csv_pred or show_table %}
+                    <button disabled type="submit" id="predict-button">Predict from CSV</button>
+                {% else %}
+                    <button type="submit" id="predict-button">Predict from CSV</button>
+                {% endif %}
+            </form>
+        </div>
+
+    </div> -->
+    
+    {% if show_table %}
+    <h1>Prediction Table</h1>
+        {% for table in tables %}
+            {{ table|safe }}
+        {% endfor %}
+        <ul class="pagination">
+            {% for i in range(1, (total // per_page) + 2) %}
+                <li><a href="{{ url_for('table', page=i) }}" class="{% if i == page %}active{% endif %}">{{ i }}</a></li>
+            {% endfor %}
+        </ul>        
+    {% endif %}
+
+    <p>&nbsp; &nbsp; </p>
+
+    <div class = "options_for_predict_csv">
+        {% if is_csv_pred %}
+        <form action="/table" method="get">
+            <button id="table_pagination" >Show Table of Results</button>
+        </form>
+        {% endif %}
+
+        {% if show_table %}
+        <form action="/no_table" method="post">
+            <button id="hide_table" >Hide Table of Results</button>
+        </form>
+        {% endif %}
+
+        {% if is_csv_pred or show_table%}
+        <form action="/download" method="get">
+            <button type="submit">Download</button>
+        </form>
+        {% endif %}
+    </div>
+
+
+    {% if is_csv_pred or show_table%}
+    <h2>Statistics</h2>
+        <h3>First Prediction</h3>
+            <p>Mean confidence score: {{statistics['first_mean_cs']}}</p>
+            <p>Percentage of predictions with a confidence score higher than 85%: {{statistics['first_frequency_high_cs']}}%</p>
+        <h3>Second Prediction</h3>
+            <p>Mean confidence score: {{statistics['second_mean_cs']}}</p>
+            <p>Percentage of predictions with a confidence score higher than 85%: {{statistics['second_frequency_high_cs']}}%</p>
+    {% endif %}
+    
+
+    
+    <div id = "OnePredStats"></div>
+
+    {% if one_prediction %}
+        <p>The predicted number is: {{ prediction[0] }}, with a confidence score of {{prediction[1]}}</p>
+    {% endif %}
+
+
+    <!-- Pie charts -->
+    {% if is_csv_pred or show_table%}
+
+    <!-- Tutorial of Temani Afif on https://www.freecodecamp.org/news/css-only-pie-chart/ -->
+    <div class="stat_pie_ensemble">
+        <div class="stat_pie_element">
+            <p>1.x.x.x</p>
+            <div class="pie no-round" style="--p:60;--b:10px;--c:#0056b3;" id =" pie_chart_1"> {{count_first_ec["1"]}} </div>
+        </div>
+
+        <div class="stat_pie_element">
+            <p>2.x.x.x</p>
+            <div class="pie no-round" style="--p:40;--b:10px;--c:#0056b3;" id =" pie_chart_2"> {{count_first_ec["2"]}} </div>
+        </div>
+
+        <div class="stat_pie_element">
+            <p>3.x.x.x</p>
+            <div class="pie no-round" style="--p:20;--b:10px;--c:#0056b3;" id =" pie_chart_3"> {{count_first_ec["3"]}} </div>
+        </div>
+    </div>
+        
+    {% endif %}
+
+ 
+    <!--<div>
+        <img src="{{ url_for('show_image') }}" alt="Result Image">
+    </div>-->
+    <div id = "show_img_div" style="display: none;">
+        <form id = 'show_image_form' action="{{ url_for('show_image') }}">
+            <button type="submit">Show Image</button>
+        </form>
+    </div>
+
+
+    {% if is_image_shown%}
+    <p> Image: </p>
+    <div class = "smile_display">
+        <!--<img id="user_image" src="{{ url_for('show_image') }}" alt="User Image" style="display:none;">-->
+        {% for i in range(len_reactant) %}
+            <img id="user_image" src="data:image/png;base64,{{ reactants[i] }}" class = "metabolite">
+            {% if i != len_reactant - 1%}
+                <img src="{{ url_for('static', filename='images/plus_sign.png') }}" alt="Plus sign" class = "plus_sign">
+            {% endif %}
+        {% endfor %}
+        <img src="{{ url_for('static', filename='images/arrow.png') }}" alt="arrow" class = "arrow">
+        {% for i in range(len_product) %}
+            <img id="user_image" src="data:image/png;base64,{{ products[i] }}"  class = "metabolite">
+            {% if i != len_product - 1%}
+            <img src="{{ url_for('static', filename='images/plus_sign.png') }}" alt="Plus sign" class = "plus_sign">
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %} 
+
+
+    {% if one_prediction or is_csv_pred or show_table%}
+    <div>
+        <p>&nbsp; &nbsp; </p>
+        <button id="new-prediction-button" onclick="makeNewPrediction()" class = "new_pred_button" >Make a New Prediction</button>
+    </div>
+    {% endif %}
+
+    <div id="new_pred_div" style="display: none;">
+        <p>&nbsp; &nbsp; </p>
+        <button id="new-prediction-button" onclick="makeNewPrediction()" class = "new_pred_button" >Make a New Prediction</button>
+    </div>
+
+    
+
+
+
+<!-- ###################################### Javascript ###################################### -->
+
+    <script>
+        function makeNewPrediction() {
+            window.location.href = "/";
+        };
+
+    </script>
+
+    <script>
+        // Code from W3schools to make tabs, can be found here: https://www.w3schools.com/howto/howto_js_tabs.asp
+    function openCity(evt, cityName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
+    
+        // Get all elements with class="tabcontent" and hide them
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+        }
+    
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+    
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(cityName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+    </script>
+
+    <!-- <script>
+        document.getElementById('show_image_form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            document.getElementById('user_image').style.display = 'block';
+        });
+    </script> -->
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to apply coloration logic to a specific column
+            function applyColoration(columnIndex, columnTitle) {
+                document.querySelectorAll('th').forEach((header, index) => {
+                    if (header.textContent.trim() === columnTitle) {
+                        columnIndex = index;
+                    }
+                });
+        
+                if (columnIndex !== -1) {
+                    document.querySelectorAll('tbody tr').forEach(row => {
+                        const cell = row.cells[columnIndex];
+                        if (cell) {
+                            const value = parseInt(cell.textContent.trim());
+                            if (!isNaN(value)) {
+                                // Create a div inside the cell
+                                const coloredDiv = document.createElement('div');
+                                coloredDiv.style.display = 'inline-block';
+                                coloredDiv.style.padding = '2px 5px';
+                                coloredDiv.style.borderRadius = '3px';
+                                coloredDiv.style.color = 'white'; // Ensure text is readable
+        
+                                // Apply background color based on the value
+                                switch (value) {
+                                    case 1: coloredDiv.style.backgroundColor = 'green'; coloredDiv.textContent = "Very High";break;
+                                    case 2: coloredDiv.style.backgroundColor = 'yellowgreen'; coloredDiv.textContent = "High";break;
+                                    case 3: coloredDiv.style.backgroundColor = 'yellow'; coloredDiv.textContent = "Moderate";coloredDiv.style.color = 'black';break;
+                                    case 4: coloredDiv.style.backgroundColor = 'orange'; coloredDiv.textContent = "Low";break;
+                                    case 5: coloredDiv.style.backgroundColor = 'red'; coloredDiv.textContent = "Very Low";break;
+                                }
+        
+                                // Clear the cell and append the colored div
+                                cell.textContent = '';
+                                cell.appendChild(coloredDiv);
+                            }
+                        }
+                    });
+                }
+            }
+        
+            // Apply coloration to 'Category 1' column
+            applyColoration(3, 'Category 1');
+        
+            // Apply coloration to 'Category 2' column
+            applyColoration(6, 'Category 2');
+        });
+        </script>
+    
+    <!-- Send form data as a JSON with this script -->
+    <script>
+        document.getElementById('oneReactionForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const reactionSmile = document.getElementById('reaction_smile').value;
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ input: reactionSmile })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data)
+                document.getElementById('OnePredStats').innerText = 'The predicted number is:  ' + data.result[0] + ', with a confidence score of ' + data.result[1];
+                document.getElementById('show_img_div').style.display = 'block';
+                document.getElementById('new_pred_div').style.display = 'block';
+                document.getElementById('predict_button_javascript').disabled = true;
+                document.getElementById('csv_predict_button_javascript').disabled = true;
+                
+                
+                // Handle the response data here
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+
+
+<!-- Pie charts -->
+
+
+<!-- ###################################### Jinja ###################################### -->
+
+
+    
+
+
+        
+
+</body>
+</html>
+
